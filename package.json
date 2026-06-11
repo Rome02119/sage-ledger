@@ -1,0 +1,13 @@
+{
+  "name": "sage-ledger",
+  "version": "1.0.0",
+  "description": "A minimal white personal finance web app: budgets, bills, credit cards, goals. Static frontend, backend-ready.",
+  "scripts": {
+    "serve": "python3 -m http.server 8080",
+    "test": "node test/smoke.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  },
+  "license": "MIT"
+}
