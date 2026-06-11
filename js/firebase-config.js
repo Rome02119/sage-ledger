@@ -18,12 +18,12 @@
   "use strict";
 
   const firebaseConfig = {
-    apiKey:            "YOUR_API_KEY",
-    authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId:         "YOUR_PROJECT_ID",
-    storageBucket:     "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId:             "YOUR_APP_ID"
+    apiKey:            "AIzaSyASm0pdulaOhX6zT-BIEL-UvYtG2Ot1i3M",
+    authDomain:        "sage-ledger-f1907.firebaseapp.com",
+    projectId:         "sage-ledger-f1907",
+    storageBucket:     "sage-ledger-f1907.firebasestorage.app",
+    messagingSenderId: "737048031624",
+    appId:             "1:737048031624:web:34784d79efb4bc79b30a3d"
   };
 
   // Initialize Firebase and expose the app, auth, and db globally
