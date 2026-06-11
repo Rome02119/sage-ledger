@@ -4,9 +4,21 @@
 (function () {
   "use strict";
 
-  const PALETTE = ["#6B7C5E", "#9CAF88", "#C9A87C", "#B8835A", "#4C5A43",
-    "#D6C7A9", "#8A9B7A", "#A67B5B", "#79806F", "#E0D5BE"];
-  const TONES = { good: "#2E7D4F", warn: "#C28A3F", bad: "#C24A3F", neutral: "#9CAF88" };
+  const LIGHT = {
+    palette: ["#6B7C5E", "#9CAF88", "#C9A87C", "#B8835A", "#4C5A43",
+      "#D6C7A9", "#8A9B7A", "#A67B5B", "#79806F", "#E0D5BE"],
+    tones: { good: "#2E7D4F", warn: "#C28A3F", bad: "#C24A3F", neutral: "#9CAF88" },
+    track: "#E7E9E2", ink: "#1F231D", muted: "#79806F",
+    barIncome: "#6B7C5E", barExpense: "#C9A87C"
+  };
+  const DARK = {
+    palette: ["#8FC46A", "#B5E08D", "#E8C285", "#E09A5E", "#5F7A4A",
+      "#F0E0B8", "#9FC788", "#D8956B", "#A8B59A", "#EFE2C2"],
+    tones: { good: "#3DDC84", warn: "#FFB454", bad: "#FF6B5E", neutral: "#B5E08D" },
+    track: "#333D2C", ink: "#F2F6EC", muted: "#A8B59A",
+    barIncome: "#8FC46A", barExpense: "#E8C285"
+  };
+  const theme = () => document.documentElement.dataset.theme === "dark" ? DARK : LIGHT;
 
   function ctx2d(canvas) {
     if (!canvas || !canvas.getContext) return null;
@@ -25,6 +37,7 @@
   // entries: [{label, value, tone?}] — tone wins over palette when provided
   function doughnut(canvas, entries, centerLabel, centerValue) {
     const ctx = ctx2d(canvas); if (!ctx) return;
+    const T = theme();
     const { w, h } = scaleForDPR(canvas, ctx);
     ctx.clearRect(0, 0, w, h);
     const total = entries.reduce((a, e) => a + e.value, 0);
@@ -32,25 +45,25 @@
     const R = Math.min(w, h) / 2 - 6, r = R * 0.66;
     if (!total) {
       ctx.beginPath(); ctx.arc(cx, cy, (R + r) / 2, 0, Math.PI * 2);
-      ctx.strokeStyle = "#E7E9E2"; ctx.lineWidth = R - r; ctx.stroke();
+      ctx.strokeStyle = T.track; ctx.lineWidth = R - r; ctx.stroke();
     } else {
       let a0 = -Math.PI / 2;
       entries.forEach((e, i) => {
         const a1 = a0 + (e.value / total) * Math.PI * 2;
         ctx.beginPath();
         ctx.arc(cx, cy, (R + r) / 2, a0 + 0.012, a1 - 0.012);
-        ctx.strokeStyle = e.tone ? TONES[e.tone] : PALETTE[i % PALETTE.length];
+        ctx.strokeStyle = e.tone ? T.tones[e.tone] : T.palette[i % T.palette.length];
         ctx.lineWidth = R - r;
         ctx.lineCap = "butt";
         ctx.stroke();
         a0 = a1;
       });
     }
-    ctx.fillStyle = "#1F231D";
+    ctx.fillStyle = T.ink;
     ctx.textAlign = "center";
     ctx.font = "600 20px Fraunces, Georgia, serif";
     ctx.fillText(centerValue || "", cx, cy + 2);
-    ctx.fillStyle = "#79806F";
+    ctx.fillStyle = T.muted;
     ctx.font = "500 11px 'Public Sans', system-ui, sans-serif";
     ctx.fillText(centerLabel || "", cx, cy + 20);
   }
@@ -58,6 +71,7 @@
   // series: [{label, income, expense}]
   function bars(canvas, series) {
     const ctx = ctx2d(canvas); if (!ctx) return;
+    const T = theme();
     const { w, h } = scaleForDPR(canvas, ctx);
     ctx.clearRect(0, 0, w, h);
     const padL = 8, padB = 22, padT = 10;
@@ -68,9 +82,9 @@
     series.forEach((s, i) => {
       const gx = padL + group * i + group / 2;
       const ih = (s.income / max) * innerH, eh = (s.expense / max) * innerH;
-      roundBar(ctx, gx - barW - 3, padT + innerH - ih, barW, ih, "#6B7C5E");
-      roundBar(ctx, gx + 3, padT + innerH - eh, barW, eh, "#C9A87C");
-      ctx.fillStyle = "#79806F";
+      roundBar(ctx, gx - barW - 3, padT + innerH - ih, barW, ih, T.barIncome);
+      roundBar(ctx, gx + 3, padT + innerH - eh, barW, eh, T.barExpense);
+      ctx.fillStyle = T.muted;
       ctx.font = "500 11px 'Public Sans', system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(s.label, gx, h - 6);
@@ -91,5 +105,9 @@
     ctx.fill();
   }
 
-  window.Charts = { doughnut, bars, PALETTE, TONES };
+  window.Charts = {
+    doughnut, bars,
+    get PALETTE() { return theme().palette; },
+    get TONES() { return theme().tones; }
+  };
 })();

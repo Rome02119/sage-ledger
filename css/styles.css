@@ -28,6 +28,36 @@
   --tabbar-h: 64px;
 }
 
+/* ── Dark mode — vibrant, high-contrast ── */
+html[data-theme="dark"] {
+  --paper: #1E241B;
+  --mist: #12160F;
+  --ink: #F2F6EC;
+  --muted: #A8B59A;
+  --sage: #8FC46A;
+  --sage-deep: #AEE08A;
+  --sage-soft: #2B3823;
+  --good: #3DDC84;
+  --good-soft: #1C3526;
+  --bad: #FF6B5E;
+  --bad-soft: #3D211D;
+  --warn: #FFB454;
+  --warn-soft: #3A2F1A;
+  --line: #333D2C;
+  --gold: #E8C285;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .45);
+  --shadow-lift: 0 2px 4px rgba(0, 0, 0, .5), 0 12px 28px rgba(0, 0, 0, .6);
+}
+html[data-theme="dark"] #auth-screen { background: linear-gradient(180deg, #12160F, #161C11); }
+html[data-theme="dark"] .tabbar { background: rgba(18, 22, 15, .94); }
+html[data-theme="dark"] .sheet-ic--earth { background: #3A2F1A; color: #E8C285; }
+html[data-theme="dark"] .demo-chip { border-color: #4A3D22; }
+html[data-theme="dark"] .card--danger { border-color: #4A2A26; }
+html[data-theme="dark"] .tab-fab { box-shadow: 0 6px 16px rgba(143, 196, 106, .35); color: #12160F !important; }
+html[data-theme="dark"] .btn--primary { box-shadow: 0 2px 8px rgba(143, 196, 106, .3); color: #12160F; }
+html[data-theme="dark"] .logo-mark { color: #12160F; }
+html[data-theme="dark"] .btn--danger { color: #12160F; }
+
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {

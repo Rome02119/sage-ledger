@@ -14,6 +14,7 @@
     boot() {
       window.Store.init();
       const s = window.Store.state;
+      this.applyTheme(s.settings.theme);
       // First run: preload demo so charts/states are visible immediately
       if (!s.settings.demoLoaded && s.transactions.length === 0 && !s.settings.everSeeded) {
         window.Store.loadDemo();
@@ -29,6 +30,11 @@
       if (window.Auth) window.Auth.startAuthListener();
       if (!window.Store.state.settings.authDismissed) this.showAuth();
       else this.go("home");
+    },
+
+    // ---------------- theme ----------------
+    applyTheme(theme) {
+      document.documentElement.dataset.theme = theme === "dark" ? "dark" : "light";
     },
 
     // ---------------- auth overlay ----------------
@@ -464,6 +470,13 @@
         },
         "auth-apple": () => window.UI.toast("Apple Sign-In coming soon — use Google or email for now", "warn"),
         "auth-skip": () => this.hideAuth(),
+        "set-theme": () => {
+          const theme = el.dataset.ref === "dark" ? "dark" : "light";
+          s.settings.theme = theme;
+          window.Store.save();
+          this.applyTheme(theme);
+          this.rerender();
+        },
         "auth-sign-out": () => { if (window.Auth) window.Auth.signOut(); },
         "settings-email-form": () => {
           const wrap = $("#settings-email-form-wrap");

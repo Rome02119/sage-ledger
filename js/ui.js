@@ -99,7 +99,7 @@
         '<div class="grid-2">' +
           '<section class="card chart-card"><h2>Spending by category</h2><div class="chart-wrap"><canvas id="chart-doughnut"></canvas></div><div class="legend" id="doughnut-legend"></div></section>' +
           '<section class="card chart-card"><h2>Income vs. spending \u00b7 6 months</h2><div class="chart-wrap"><canvas id="chart-bars"></canvas></div>' +
-            '<div class="legend"><span class="legend-key"><i style="background:#6B7C5E"></i>Income</span><span class="legend-key"><i style="background:#C9A87C"></i>Spending</span></div></section>' +
+            '<div class="legend"><span class="legend-key"><i style="background:' + window.Charts.PALETTE[0] + '"></i>Income</span><span class="legend-key"><i style="background:' + window.Charts.PALETTE[2] + '"></i>Spending</span></div></section>' +
         "</div>" +
         '<div class="grid-2">' +
           '<section class="card" id="alerts-card"><h2>What needs your eyes</h2><div class="alert-list">' +
@@ -349,6 +349,12 @@
           '<h3>Income</h3><div class="chips">' + catChips(state.categories.income, "income") + "</div>" +
           '<div class="cat-add"><input id="cat-new" placeholder="New category name"><select id="cat-kind"><option value="expense">Spending</option><option value="income">Income</option></select>' +
           '<button class="btn btn--ghost" data-act="add-cat">Add</button></div></section>' +
+        '<section class="card"><h2>Appearance</h2>' +
+          '<div class="head-actions">' +
+          '<button class="btn ' + (state.settings.theme === "dark" ? "btn--ghost" : "btn--primary") + '" data-act="set-theme" data-ref="light">☀️ Light</button>' +
+          '<button class="btn ' + (state.settings.theme === "dark" ? "btn--primary" : "btn--ghost") + '" data-act="set-theme" data-ref="dark">🌙 Dark</button>' +
+          '</div>' +
+          '<p class="hint">Dark mode uses brighter, higher-contrast colors.</p></section>' +
         '<section class="card"><h2>Behavior</h2>' +
           '<label class="field"><span>"Large purchase" threshold — triggers the red flag & heavy animation</span>' +
           '<input id="set-heavy" inputmode="decimal" value="' + state.settings.heavyThreshold + '"></label>' +

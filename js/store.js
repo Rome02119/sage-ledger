@@ -53,7 +53,8 @@
         name: "",
         heavyThreshold: 200,   // expenses at/above trigger the heavy-deduction animation + flag
         demoLoaded: false,
-        authDismissed: false
+        authDismissed: false,
+        theme: "light"         // "light" | "dark"
       },
       categories: {
         income: ["Salary / Paycheck", "Side Hustle", "Bonus", "Other Income"],
