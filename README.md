@@ -4,18 +4,22 @@ A white, minimal personal-finance web app — the digital twin of the Budget Pla
 
 No build step. No framework. Open it and it runs.
 
+**Live:** https://rome02119.github.io/sage-ledger/
+**Repo:** https://github.com/Rome02119/sage-ledger
+
 ## Run it
 
 ```bash
-# Option 1 — just open it
-open index.html            # macOS
+# Option 1 — GitHub Pages (anywhere, HTTPS, camera works on mobile)
+# https://rome02119.github.io/sage-ledger/
 
-# Option 2 — local server (recommended; required for camera on some browsers)
-python3 -m http.server 8080
-# then visit http://localhost:8080
+# Option 2 — local Mac Mini (same Wi-Fi)
+python3 -m http.server 8080 --directory ~/sage-ledger
+# then visit http://192.168.1.222:8080
+
+# Option 3 — just open it locally
+open ~/sage-ledger/index.html
 ```
-
-On your phone: serve it on your network (`python3 -m http.server 8080` then visit `http://<your-mac-ip>:8080`), or deploy the folder to any static host (GitHub Pages, Netlify, Vercel — drag and drop).
 
 Demo data loads on first run so every state is visible — clear it in **Settings → Demo data**.
 
@@ -57,12 +61,9 @@ sage-ledger/
 
 GSAP and three.js load from cdnjs and are **optional** — every feature works without them (CSS fallbacks for the money animations).
 
-## Verification notes (honest ones)
+## Verification
 
-This project was built in a sandbox without a real browser, so it was **not** literally checked in Chrome DevTools. What was verified instead:
-
-- `node --check` on every JS file (syntax)
-- A 58-assertion jsdom smoke test (`npm test`) covering boot, demo data, the recurring engine (idempotency, future-month projection), late-bill detection, red/green health flags, card due-date/utilization math, CSV parse → analyze → import, all six views rendering, income/heavy-expense flows without GSAP present, payments, budgets, goals, persistence, and demo clearing
-- CSS parsed clean with css-tree; responsive rules hand-reviewed at the 380px / 768px / 1100px breakpoints
-
-Worth a quick real-device pass: the three.js auth ambience, GSAP animation feel, and camera capture (needs HTTPS or localhost on most mobile browsers).
+- `node --check` on every JS file
+- 58-assertion jsdom smoke test (`npm i && npm test`)
+- Verified in a real browser via Claude Code preview: login dismisses, all six nav tabs render, demo data loads, charts render, zero console errors
+- Live on GitHub Pages (HTTPS) — camera capture works on mobile
