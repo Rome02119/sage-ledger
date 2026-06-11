@@ -1,6 +1,8 @@
 /* Sage Ledger — store.js
-   State container + persistence. Uses localStorage when available,
-   falls back to in-memory (sandboxed iframes, private mode). */
+   State container + persistence.
+   - Signed out / guest: localStorage (or in-memory fallback)
+   - Signed in:          localStorage as cache + Firestore for cross-device sync
+   Firestore doc: users/{uid}/state/ledger  (single document per user) */
 (function () {
   "use strict";
 
@@ -85,13 +87,22 @@
   const Store = {
     state: null,
     storageMode: HAS_LS ? "localStorage" : "memory",
+    _baseStorageMode: HAS_LS ? "localStorage" : "memory",
+    _uid: null,        // set by auth.js after sign-in
+    _syncTimer: null,  // debounce handle for cloud writes
 
     init() { this.state = load(); return this.state; },
 
     save() {
       const raw = JSON.stringify(this.state);
+      // Always write locally first (instant, offline-safe)
       if (HAS_LS) { try { window.localStorage.setItem(KEY, raw); } catch (e) { /* quota */ } }
       else memory = raw;
+      // Debounced cloud write — 1.5 s after last mutation
+      if (this._uid && window.FB && window.FB.db) {
+        clearTimeout(this._syncTimer);
+        this._syncTimer = setTimeout(() => this.saveCloud(), 1500);
+      }
     },
 
     reset() {
@@ -101,6 +112,53 @@
 
     uid(prefix) {
       return (prefix || "id") + "-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
+    },
+
+    // ---------- Firestore cloud sync ----------
+
+    /* Write current state to Firestore (called after sign-in and on save debounce). */
+    saveCloud() {
+      if (!this._uid || !window.FB || !window.FB.db) return;
+      // Strip receipts binary data (object URLs don't survive cloud round-trip)
+      const payload = JSON.parse(JSON.stringify(this.state));
+      payload.receipts = []; // binaries stay local only
+      window.FB.db
+        .collection("user_state")
+        .doc(this._uid)
+        .set({ data: payload, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true })
+        .then(() => {
+          this.storageMode = "cloud + localStorage";
+          // Stamp the sync time in Settings if visible
+          const el = document.getElementById("sync-time");
+          if (el) el.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        })
+        .catch((err) => console.warn("[Store] Firestore write failed:", err));
+    },
+
+    /* Load state from Firestore after sign-in. Falls back to local if no cloud doc exists. */
+    loadCloud() {
+      if (!this._uid || !window.FB || !window.FB.db) return Promise.resolve(null);
+      return window.FB.db
+        .collection("user_state")
+        .doc(this._uid)
+        .get()
+        .then((doc) => {
+          if (!doc.exists || !doc.data().data) return null;
+          const cloud = doc.data().data;
+          // Merge cloud data into local state (cloud wins — Option B: start fresh)
+          this.state = Object.assign(defaultState(), cloud, {
+            settings: Object.assign(defaultState().settings, (cloud.settings || {}), {
+              authDismissed: true // already signed in
+            })
+          });
+          this.save(); // write to localStorage as cache
+          this.storageMode = "cloud + localStorage";
+          return this.state;
+        })
+        .catch((err) => {
+          console.warn("[Store] Firestore read failed, using local data:", err);
+          return null;
+        });
     },
 
     // ---------- demo data ----------

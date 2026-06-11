@@ -20,24 +20,42 @@
   function startAuthListener() {
     window.FB.auth.onAuthStateChanged((user) => {
       if (user) {
-        // Hydrate display name into Store if not already set
-        if (!window.Store.state.settings.name && user.displayName) {
-          window.Store.state.settings.name = user.displayName;
-          window.Store.save();
-        }
-        // Store UID so Store.saveCloud knows whose document to write
+        // Tell Store who's signed in so save() can sync to cloud
         window.Store._uid = user.uid;
-        // If auth overlay is still visible, hide it
-        const authScreen = $("#auth-screen");
+
+        // Load cloud state (Option B: cloud wins; local guest data stays separate)
+        window.Store.loadCloud().then((cloudState) => {
+          if (cloudState) {
+            // Cloud data found — hydrate display name from Firebase user if not set
+            if (!window.Store.state.settings.name && user.displayName) {
+              window.Store.state.settings.name = user.displayName;
+              window.Store.save();
+            }
+            // Re-render whatever view is showing with cloud data
+            if (window.App && window.App.view) window.App.rerender();
+          } else {
+            // No cloud doc yet — this is their first sign-in
+            // Hydrate name and push the fresh local state to cloud
+            if (!window.Store.state.settings.name && user.displayName) {
+              window.Store.state.settings.name = user.displayName;
+            }
+            window.Store.state.settings.authDismissed = true;
+            window.Store.save();          // saves locally
+            window.Store.saveCloud();     // initial cloud write
+          }
+        });
+
+        // If auth overlay is still visible, dismiss it
+        const authScreen = document.getElementById("auth-screen");
         if (authScreen && !authScreen.hidden) {
           window.App.hideAuth();
-        }
-        // Re-render settings to show signed-in state
-        if (window.App && window.App.view === "settings") {
+        } else if (window.App && window.App.view === "settings") {
           window.App.rerender();
         }
       } else {
+        // Signed out — revert to local-only mode
         window.Store._uid = null;
+        window.Store.storageMode = window.Store._baseStorageMode;
       }
     });
   }
