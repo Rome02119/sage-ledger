@@ -25,6 +25,8 @@
       }
       this.wireGlobal();
       this.refreshBadges();
+      // Start Firebase auth listener (no-op if Firebase isn't configured yet)
+      if (window.Auth) window.Auth.startAuthListener();
       if (!window.Store.state.settings.authDismissed) this.showAuth();
       else this.go("home");
     },
@@ -35,6 +37,9 @@
       a.hidden = false;
       $("#app").setAttribute("aria-hidden", "true");
       this._ambient = window.Anim.authAmbient($("#auth-canvas"));
+      // Mount the email form panel inside the auth card
+      const emailContainer = $("#auth-email-form");
+      if (emailContainer && window.Auth) window.Auth.mountEmailForm(emailContainer);
       if (window.gsap && !window.Anim.reduced()) {
         window.gsap.fromTo("#auth-card", { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: "power3.out", delay: 0.15 });
       }
@@ -436,9 +441,37 @@
       const find = (arr) => arr.find(x => x.id === ref);
       const actions = {
         // auth
-        "auth-google": () => window.UI.toast("Google sign-in isn't wired yet — see docs/NEXT_STEPS.md", "warn"),
-        "auth-apple": () => window.UI.toast("Apple sign-in isn't wired yet — see docs/NEXT_STEPS.md", "warn"),
+        "auth-google": () => {
+          if (window.Auth) window.Auth.signInGoogle();
+          else window.UI.toast("Firebase isn't configured yet — fill in js/firebase-config.js", "warn");
+        },
+        "auth-email-toggle": () => {
+          // The email form is already mounted; toggle its visibility
+          const ef = $("#auth-email-form");
+          if (!ef) return;
+          const isVisible = ef.style.display !== "none" && ef.innerHTML.trim() !== "";
+          if (isVisible) {
+            ef.style.display = "none";
+            const btn = $("#btn-email-toggle");
+            if (btn) btn.classList.remove("is-active");
+          } else {
+            ef.style.display = "";
+            const btn = $("#btn-email-toggle");
+            if (btn) btn.classList.add("is-active");
+            const first = ef.querySelector("input");
+            if (first) first.focus();
+          }
+        },
+        "auth-apple": () => window.UI.toast("Apple Sign-In coming soon — use Google or email for now", "warn"),
         "auth-skip": () => this.hideAuth(),
+        "auth-sign-out": () => { if (window.Auth) window.Auth.signOut(); },
+        "settings-email-form": () => {
+          const wrap = $("#settings-email-form-wrap");
+          if (!wrap) return;
+          const showing = wrap.innerHTML.trim() !== "";
+          if (showing) { wrap.innerHTML = ""; return; }
+          if (window.Auth) window.Auth.mountEmailForm(wrap);
+        },
         // fab / sheet
         "open-sheet": () => window.UI.openSheet(),
         "close-sheet": () => window.UI.closeSheet(),

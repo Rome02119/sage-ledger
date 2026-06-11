@@ -1,0 +1,29 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".gitignore",
+      "firestore.rules",
+      "docs/**",
+      "test/**",
+      "node_modules/**",
+      ".git/**"
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "auth": {
+    "providers": {
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Sage Ledger",
+        "supportEmail": "",
+        "authorizedRedirectUris": [
+          "https://rome02119.github.io/sage-ledger/"
+        ]
+      }
+    }
+  }
+}

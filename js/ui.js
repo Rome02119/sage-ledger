@@ -337,12 +337,10 @@
 
       view.innerHTML =
         '<header class="page-head"><div><p class="eyebrow">You</p><h1>Settings</h1></div></header>' +
-        '<section class="card"><h2>Profile & sign-in</h2>' +
+        '<section class="card"><h2>Profile &amp; sign-in</h2>' +
           '<label class="field"><span>Your name</span><input id="set-name" value="' + esc(state.settings.name) + '" placeholder="Your name"></label>' +
-          '<div class="auth-buttons auth-buttons--inline">' +
-            '<button class="btn btn--auth" data-act="auth-google">' + googleLogo() + "Continue with Google</button>" +
-            '<button class="btn btn--auth" data-act="auth-apple">' + appleLogo() + "Continue with Apple</button></div>" +
-          '<p class="hint">Sign-in is a stub — wire credentials per <code>docs/NEXT_STEPS.md</code>.</p></section>' +
+          _authPanel() +
+          '</section>' +
         '<section class="card"><h2>Recurring bills & income</h2><div class="rec-list">' +
           (recRows || '<p class="empty">Bills that repeat (rent, internet, subscriptions) auto-fill every future month once added here.</p>') +
           '</div><button class="btn btn--ghost" data-act="add-rec">' + this.icon("plus") + "Add recurring</button></section>" +
@@ -399,6 +397,30 @@
       setTimeout(() => { sheet.hidden = true; }, 200);
     }
   };
+
+  function _authPanel() {
+    const user = window.Auth && window.Auth.currentUser ? window.Auth.currentUser() : null;
+    if (user) {
+      const avatar = user.photoURL
+        ? '<img src="' + esc(user.photoURL) + '" class="auth-avatar" alt="" width="36" height="36" referrerpolicy="no-referrer">'
+        : '<span class="auth-avatar auth-avatar--initials">' + esc((user.displayName || user.email || "?")[0].toUpperCase()) + '</span>';
+      return '<div class="signed-in-panel">' +
+        avatar +
+        '<div class="signed-in-info">' +
+          (user.displayName ? '<strong>' + esc(user.displayName) + '</strong>' : '') +
+          '<small>' + esc(user.email || '') + '</small>' +
+        '</div>' +
+        '<button class="btn btn--ghost" data-act="auth-sign-out">Sign out</button>' +
+        '</div>' +
+        '<p class="hint sync-status">&#9729;&#xFE0F; Data synced to cloud · <span id="sync-time"></span></p>';
+    }
+    return '<div class="auth-buttons auth-buttons--inline">' +
+      '<button class="btn btn--auth" data-act="auth-google">' + googleLogo() + 'Continue with Google</button>' +
+      '<button class="btn btn--auth btn--email-toggle" data-act="settings-email-form">' +
+        '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>' +
+        'Sign in with email</button></div>' +
+      '<div id="settings-email-form-wrap"></div>';
+  }
 
   function monthBar(mk, scope) {
     const h = window.Store.helpers;
