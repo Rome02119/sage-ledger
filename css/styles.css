@@ -509,8 +509,9 @@ main {
   background: rgba(31, 35, 29, .35);
   display: flex; align-items: flex-end; justify-content: center;
   opacity: 0; transition: opacity .2s ease;
+  pointer-events: none;
 }
-#sheet.is-open { opacity: 1; }
+#sheet.is-open { opacity: 1; pointer-events: auto; }
 .sheet-panel {
   width: 100%; max-width: 520px;
   background: var(--paper);
@@ -545,8 +546,9 @@ main {
   display: flex; align-items: flex-end; justify-content: center;
   opacity: 0; transition: opacity .2s ease;
   overflow-y: auto;
+  pointer-events: none;
 }
-#modal.is-open { opacity: 1; }
+#modal.is-open { opacity: 1; pointer-events: auto; }
 .modal-panel {
   width: 100%; max-width: 480px;
   background: var(--paper);
