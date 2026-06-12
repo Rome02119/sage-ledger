@@ -151,6 +151,27 @@
       const groups = {};
       txns.forEach(t => { (groups[t.date] = groups[t.date] || []).push(t); });
 
+      const people = {};
+      txns.forEach(t => {
+        if (!t.person || t.projected) return;
+        if (!people[t.person]) people[t.person] = { sent: 0, received: 0 };
+        if (t.type === "income") people[t.person].received = L.round2(people[t.person].received + t.amount);
+        else people[t.person].sent = L.round2(people[t.person].sent + t.amount);
+      });
+      const peopleHTML = Object.keys(people).length
+        ? '<section class="card"><h2>People</h2>' +
+          Object.entries(people).sort((a, b) => (b[1].sent + b[1].received) - (a[1].sent + a[1].received)).map(([name, f]) => {
+            const net = L.round2(f.received - f.sent);
+            return '<div class="txn-row"><span class="txn-emoji">🧑</span>' +
+              '<span class="txn-body"><strong>' + esc(name) + '</strong><small>' +
+              (f.received ? '+' + M()(f.received) + ' received' : '') +
+              (f.received && f.sent ? ' · ' : '') +
+              (f.sent ? M()(f.sent) + ' sent' : '') + '</small></span>' +
+              '<span class="txn-amt' + (net >= 0 ? ' txn-amt--in' : '') + '">' +
+              (net >= 0 ? '+' : '−') + M()(Math.abs(net)) + '</span></div>';
+          }).join('') + '</section>'
+        : '';
+
       view.innerHTML =
         '<header class="page-head"><div><p class="eyebrow">Activity</p><h1>Transactions</h1></div>' +
           '<div class="head-actions"><button class="btn btn--ghost" data-act="import-csv">' + this.icon("csv") + "Import CSV</button>" +
@@ -163,7 +184,7 @@
           '<div class="txn-day"><h3>' + dayLabel(date) + "</h3>" +
           groups[date].map(t => this.txnRow(t)).join("") + "</div>").join("")
           : '<p class="empty">No transactions in ' + h.monthLabel(mk) + '. Tap <strong>Add</strong> or the <strong>+</strong> button to log one.</p>') +
-        "</section>";
+        "</section>" + peopleHTML;
 
       const search = $("#txn-search");
       if (search) search.addEventListener("input", (e) => {

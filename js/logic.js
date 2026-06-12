@@ -283,6 +283,10 @@
     const d = new Date(t);
     return isNaN(d) ? null : H().iso(d);
   }
+  function normalizeMerchant(name) {
+    return String(name).toLowerCase().replace(/\b(sq\*|tst\*|pp\*|amzn\s|dsh\*)\s*/g, "").replace(/[^a-z0-9]/g, "").slice(0, 32);
+  }
+
   // Guess which columns hold date / amount / description / category
   function analyzeCSV(rows) {
     if (!rows.length) return null;
@@ -303,9 +307,28 @@
       scores.push({ c, dateHits, amtHits, textLen, name: header[c].toLowerCase() });
     }
     const byName = (re) => scores.find(s => re.test(s.name));
+    const idx = (re) => header.findIndex(h => re.test(h.toLowerCase()));
+
+    // PayPal: explicit mapping avoids the empty "Shipping and Handling Amount" trap
+    if (scores.some(s => /from email address/.test(s.name)) ||
+        (scores.some(s => /^net$/.test(s.name)) && scores.some(s => /^gross$/.test(s.name)))) {
+      const nameCol = idx(/^name$/), itemCol = idx(/item title/), subjCol = idx(/^subject$/);
+      return {
+        header, data, hasHeader, isPayPal: true,
+        mapping: {
+          date: idx(/^date$/),
+          amount: idx(/^net$/),
+          desc: nameCol >= 0 ? nameCol : (itemCol >= 0 ? itemCol : (subjCol >= 0 ? subjCol : 0)),
+          category: -1
+        }
+      };
+    }
+
     let dateCol = (byName(/date|posted/) || scores.slice().sort((a, b) => b.dateHits - a.dateHits)[0]).c;
-    let amtCol = byName(/amount|amt|debit|charge/);
-    amtCol = amtCol ? amtCol.c
+    // Among name-matched amount columns, prefer the one with the most actual data
+    const amtNameMatches = scores.filter(s => /amount|amt|debit|charge/.test(s.name) && s.c !== dateCol);
+    let amtCol = amtNameMatches.length
+      ? amtNameMatches.sort((a, b) => b.amtHits - a.amtHits)[0].c
       : scores.filter(s => s.c !== dateCol).sort((a, b) => b.amtHits - a.amtHits)[0].c;
     let descCand = byName(/desc|merchant|payee|name|memo/);
     let descCol = descCand ? descCand.c
@@ -321,6 +344,8 @@
   function importRows(state, analyzed, mapping, opts) {
     const made = [];
     const skip = [];
+    const memory = {};
+    state.transactions.forEach(t => { if (t.desc && t.category) { const k = normalizeMerchant(t.desc); if (!memory[k]) memory[k] = t.category; } });
     analyzed.data.forEach(r => {
       const date = parseDate(r[mapping.date]);
       const rawAmt = parseAmount(r[mapping.amount]);
@@ -330,15 +355,17 @@
       else { type = "expense"; amount = Math.abs(rawAmt); }
       const desc = (r[mapping.desc] || "Imported transaction").trim().slice(0, 80);
       let category = mapping.category >= 0 ? (r[mapping.category] || "").trim() : "";
-      if (!category) category = type === "income" ? "Other Income" : "Miscellaneous";
+      if (!category) category = memory[normalizeMerchant(desc)] || (type === "income" ? "Other Income" : "Miscellaneous");
       const all = state.categories.income.concat(state.categories.expense);
       if (!all.includes(category)) {
         (type === "income" ? state.categories.income : state.categories.expense).push(category);
       }
-      made.push({
+      const txn = {
         id: window.Store.uid("txn"), date, desc, category, amount: round2(amount), type,
         cardId: opts.cardId || null, recurringId: null, imported: true
-      });
+      };
+      if (analyzed.isPayPal && desc) txn.person = desc;
+      made.push(txn);
     });
     state.transactions = state.transactions.concat(made)
       .sort((a, b) => a.date < b.date ? 1 : -1);
@@ -352,12 +379,32 @@
     return { imported: made.length, skipped: skip.length, txns: made };
   }
 
+  function suggestRecurring(state, newTxns) {
+    const suggestions = [], seen = new Set();
+    newTxns.forEach(t => {
+      const key = normalizeMerchant(t.desc) + "|" + t.amount;
+      if (seen.has(key)) return;
+      const prior = state.transactions.find(x =>
+        x.id !== t.id && !x.recurringId && x.type === t.type &&
+        Math.abs(x.amount - t.amount) < 0.02 &&
+        normalizeMerchant(x.desc) === normalizeMerchant(t.desc) &&
+        x.date.slice(0, 7) !== t.date.slice(0, 7)
+      );
+      if (!prior) return;
+      if (state.recurring.some(r => normalizeMerchant(r.desc) === normalizeMerchant(t.desc))) return;
+      seen.add(key);
+      suggestions.push({ desc: t.desc, amount: t.amount, category: t.category, type: t.type, day: +t.date.slice(8) });
+    });
+    return suggestions;
+  }
+
   window.Logic = {
     money, money0, round2, ordinal,
     materializeRecurring, projectedFor, txnsForMonth, sumBy,
     spentByCategory, monthlySeries,
     cardCycle, daysUntil, nextOccurrence,
     lateBills, computeHealth, ribbonSegments,
-    parseCSV, analyzeCSV, importRows, parseAmount, parseDate
+    parseCSV, analyzeCSV, importRows, parseAmount, parseDate,
+    suggestRecurring
   };
 })();

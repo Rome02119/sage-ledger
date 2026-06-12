@@ -355,43 +355,80 @@
     // ---------------- CSV flow ----------------
     csvFlow(file, opts) {
       window.Upload.readCSV(file).then(analyzed => {
-        const map = analyzed.mapping;
-        const cols = analyzed.header.map((hd, i) => '<option value="' + i + '">' + window.UI.esc(hd) + "</option>").join("");
-        const preview = analyzed.data.slice(0, 5).map(r =>
-          "<tr>" + analyzed.header.map((_, i) => "<td>" + window.UI.esc((r[i] || "").slice(0, 22)) + "</td>").join("") + "</tr>").join("");
-        window.UI.openModal("Import " + window.UI.esc(file.name),
-          '<div class="csv-table-wrap"><table class="csv-table"><thead><tr>' +
-            analyzed.header.map(hd => "<th>" + window.UI.esc(hd) + "</th>").join("") + "</tr></thead><tbody>" + preview + "</tbody></table></div>" +
-          '<div class="field-row">' +
-            '<label class="field"><span>Date column</span><select id="csv-date">' + cols + "</select></label>" +
-            '<label class="field"><span>Amount column</span><select id="csv-amt">' + cols + "</select></label></div>" +
-          '<div class="field-row">' +
-            '<label class="field"><span>Description column</span><select id="csv-desc">' + cols + "</select></label>" +
-            '<label class="field"><span>Category column</span><select id="csv-cat"><option value="-1">\u2014 none \u2014</option>' + cols + "</select></label></div>" +
-          '<label class="check"><input id="csv-neg" type="checkbox" checked> Negative amounts are spending (bank style)</label>' +
-          (opts && opts.cardId ? "" :
-            '<label class="field"><span>Attach to card (optional)</span><select id="csv-card"><option value="">\u2014 none \u2014</option>' +
-            window.Store.state.cards.map(c => '<option value="' + c.id + '">' + window.UI.esc(c.name) + "</option>").join("") + "</select></label>") +
-          '<button class="btn btn--primary btn--block" id="csv-go">Import ' + analyzed.data.length + " rows</button>",
-          () => {
-            $("#csv-date").value = map.date; $("#csv-amt").value = map.amount;
-            $("#csv-desc").value = map.desc; $("#csv-cat").value = map.category;
-            $("#csv-go").addEventListener("click", () => {
-              const mapping = {
-                date: +$("#csv-date").value, amount: +$("#csv-amt").value,
-                desc: +$("#csv-desc").value, category: +$("#csv-cat").value
-              };
-              const cardId = (opts && opts.cardId) || ($("#csv-card") ? $("#csv-card").value : "") || null;
-              const res = window.Logic.importRows(window.Store.state, analyzed, mapping, {
-                negativeIsExpense: $("#csv-neg").checked, cardId
+        if (analyzed.isPayPal) {
+          const map = analyzed.mapping;
+          const prev = analyzed.data.slice(0, 3).map(r =>
+            "<tr><td>" + window.UI.esc((r[map.date] || "").slice(0, 12)) + "</td><td>" +
+            window.UI.esc((r[map.desc] || "").slice(0, 24)) + "</td><td>" +
+            window.UI.esc(r[map.amount] || "") + "</td></tr>").join("");
+          window.UI.openModal("Import PayPal CSV",
+            "<p>PayPal format detected \u2014 <strong>" + analyzed.data.length + "</strong> transactions.</p>" +
+            '<div class="csv-table-wrap"><table class="csv-table"><thead><tr><th>Date</th><th>Name</th><th>Net</th></tr></thead><tbody>' +
+            prev + '<tr><td colspan="3" class="hint">\u2026 and ' + Math.max(0, analyzed.data.length - 3) + " more</td></tr></tbody></table></div>" +
+            '<button class="btn btn--primary btn--block" id="csv-go">Import all ' + analyzed.data.length + " transactions</button>" +
+            '<button class="btn btn--ghost btn--block" id="csv-adj" style="margin-top:8px">Adjust columns manually</button>',
+            () => {
+              $("#csv-go").addEventListener("click", () => {
+                const res = window.Logic.importRows(window.Store.state, analyzed, map,
+                  { negativeIsExpense: true, cardId: opts && opts.cardId });
+                window.Store.save();
+                window.UI.closeModal();
+                this.go("activity");
+                window.UI.toast("Imported " + res.imported + " transactions" + (res.skipped ? " (" + res.skipped + " skipped)" : ""), "good");
+                this._offerRecurring(window.Logic.suggestRecurring(window.Store.state, res.txns));
               });
-              window.Store.save();
-              window.UI.closeModal();
-              this.go("activity");
-              window.UI.toast("Imported " + res.imported + " transactions" + (res.skipped ? " (" + res.skipped + " skipped)" : ""), "good");
+              $("#csv-adj").addEventListener("click", () => { window.UI.closeModal(); this._csvFullMapping(analyzed, opts); });
             });
-          });
+          return;
+        }
+        this._csvFullMapping(analyzed, opts);
       }).catch(err => window.UI.toast(err.message || "Couldn't parse that CSV", "bad"));
+    },
+
+    _csvFullMapping(analyzed, opts) {
+      const map = analyzed.mapping;
+      const cols = analyzed.header.map((hd, i) => '<option value="' + i + '">' + window.UI.esc(hd) + "</option>").join("");
+      const preview = analyzed.data.slice(0, 5).map(r =>
+        "<tr>" + analyzed.header.map((_, i) => "<td>" + window.UI.esc((r[i] || "").slice(0, 22)) + "</td>").join("") + "</tr>").join("");
+      window.UI.openModal("Import CSV \u2014 choose columns",
+        '<div class="csv-table-wrap"><table class="csv-table"><thead><tr>' +
+          analyzed.header.map(hd => "<th>" + window.UI.esc(hd) + "</th>").join("") + "</tr></thead><tbody>" + preview + "</tbody></table></div>" +
+        '<div class="field-row">' +
+          '<label class="field"><span>Date column</span><select id="csv-date">' + cols + "</select></label>" +
+          '<label class="field"><span>Amount column</span><select id="csv-amt">' + cols + "</select></label></div>" +
+        '<div class="field-row">' +
+          '<label class="field"><span>Description column</span><select id="csv-desc">' + cols + "</select></label>" +
+          '<label class="field"><span>Category column</span><select id="csv-cat"><option value="-1">\u2014 none \u2014</option>' + cols + "</select></label></div>" +
+        '<label class="check"><input id="csv-neg" type="checkbox" checked> Negative amounts are spending (bank style)</label>' +
+        (opts && opts.cardId ? "" :
+          '<label class="field"><span>Attach to card (optional)</span><select id="csv-card"><option value="">\u2014 none \u2014</option>' +
+          window.Store.state.cards.map(c => '<option value="' + c.id + '">' + window.UI.esc(c.name) + "</option>").join("") + "</select></label>") +
+        '<button class="btn btn--primary btn--block" id="csv-go">Import ' + analyzed.data.length + " rows</button>",
+        () => {
+          $("#csv-date").value = map.date; $("#csv-amt").value = map.amount;
+          $("#csv-desc").value = map.desc; $("#csv-cat").value = map.category;
+          $("#csv-go").addEventListener("click", () => {
+            const mapping = {
+              date: +$("#csv-date").value, amount: +$("#csv-amt").value,
+              desc: +$("#csv-desc").value, category: +$("#csv-cat").value
+            };
+            const cardId = (opts && opts.cardId) || ($("#csv-card") ? $("#csv-card").value : "") || null;
+            const res = window.Logic.importRows(window.Store.state, analyzed, mapping, {
+              negativeIsExpense: $("#csv-neg").checked, cardId
+            });
+            window.Store.save();
+            window.UI.closeModal();
+            this.go("activity");
+            window.UI.toast("Imported " + res.imported + " transactions" + (res.skipped ? " (" + res.skipped + " skipped)" : ""), "good");
+            this._offerRecurring(window.Logic.suggestRecurring(window.Store.state, res.txns));
+          });
+        });
+    },
+
+    _offerRecurring(suggestions) {
+      if (!suggestions.length) return;
+      setTimeout(() => window.UI.toast(suggestions[0].desc + " looks recurring \u2014 add it in Settings \u203a Recurring Bills", "warn"), 800);
+      if (suggestions.length > 1) setTimeout(() => window.UI.toast(suggestions.length + " potential recurring charges found", "warn"), 2400);
     },
 
     // ---------------- global wiring ----------------
